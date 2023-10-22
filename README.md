@@ -1,9 +1,8 @@
-# neoPay_mobile
+# Neo Pay Mobile
 
 Installation
 ```
-1. npm install
-2. npx expo install
+npm install && npx expo install
 ```
 
 Run locally using expo go
