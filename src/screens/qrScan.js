@@ -18,6 +18,7 @@ export default function QRScan({ navigation }) {
   const [payload, setPayload] = useState(null);
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [visible, setVisible] = React.useState(false);
+  const [status, setStatus] = useState(0) // 0 for nothing, 1 for loading, 2 for success, 3 for failed
 
 
   const showModal = () => setVisible(true);
@@ -41,11 +42,21 @@ export default function QRScan({ navigation }) {
   })
 
   const { writeAsync: transfer } = useContractWrite({
-    address: selectedToken.address,
+    address: tokenList.length > 0 ?? tokenList[selectedIndex]?.receiver,
     abi: erc20ABI,
     functionName: 'transfer',
     account: address,
   })
+
+  async function getTransactionStatus(hash) {
+    setStatus(1); // loading
+    const status = await publicClient.waitForTransactionReceipt(hash);
+    if (status.status === "success") {
+      setStatus(2); // success
+    } else {
+      setStatus(3); // failed
+    }
+  }
 
   const sendTransactions = async () => {
     if (tokenList[selectedIndex].address === payload.address) {
@@ -53,7 +64,7 @@ export default function QRScan({ navigation }) {
       const transferTx = await transfer({
         args: [payload.receiver, parseUnits(payload.amount, payload.token.decimals)],
       })
-      console.log(transferTx);
+      getTransactionStatus(transferTx);
     } else {
       // intitate swap and pay
       const swapParams = await getSwapParams(
@@ -67,7 +78,6 @@ export default function QRScan({ navigation }) {
           allowedSlippage: BigInt(100),
         }
       )
-      console.log(swapParams);
 
       const allowance = await publicClient.readContract({
         address: tokenList[selectedIndex].address,
@@ -86,7 +96,7 @@ export default function QRScan({ navigation }) {
       const swapAndTransferTx = await swapAndTransfer({
         args: swapParams
       })
-      console.log(swapAndTransferTx);
+      getTransactionStatus(swapAndTransferTx);
     }
   }
 
@@ -173,7 +183,6 @@ export default function QRScan({ navigation }) {
     setScanned(true);
     setPayload(JSON.parse(data));
     console.log(JSON.parse(data));
-
     setSelectedIndex(tokenList.findIndex((element) => element.address === JSON.parse(data).token.address))
   };
 

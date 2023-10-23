@@ -47,13 +47,6 @@ export default function Recieve({ navigation }) {
     enabled: !!address,
   })
 
-  const handleTextChange = (text) => {
-    setAmount(text);
-    setTextFontSize(
-      text.length > 6 && text.length < 9 ? 40 : text.length > 8 ? 30 : 60
-    );
-  };
-
   const handlePressDownload = async () => {
     try {
       let isPermissionGranted = permissionResponse?.granted;

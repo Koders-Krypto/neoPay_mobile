@@ -34,7 +34,7 @@ export default function BalanceComponent({ navigation }) {
       <View style={styles.balanceContainer}>
         <View style={styles.amountCVontainer}>
           <Text style={styles.amount}>
-            {truncateNumber(balance?.formatted, 3)}
+            ~{truncateNumber(balance?.formatted, 3).toFixed(4)}
           </Text>
           <Text style={{ fontSize: 10, paddingLeft: 5 }}>{balance?.symbol}</Text>
         </View>
