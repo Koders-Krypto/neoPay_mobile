@@ -36,14 +36,19 @@ export default function QuickPayComponent({ navigation }) {
           </TouchableHighlight>
         </View>
         <View style={styles.QuickMenuIItemContainer}>
-          <View style={styles.iconContainer}>
-            <MaterialIcons
-              name="swap-calls"
-              style={styles.icons}
-              color="white"
-            />
-            <Text style={styles.text}>Swap</Text>
-          </View>
+          <TouchableHighlight
+            style={styles.iconContainer}
+            onPress={() => navigation.navigate("Swap")}
+          >
+            <View style={styles.iconContainer}>
+              <MaterialIcons
+                name="swap-calls"
+                style={styles.icons}
+                color="white"
+              />
+              <Text style={styles.text}>Swap</Text>
+            </View>
+          </TouchableHighlight>
         </View>
         <View style={styles.QuickMenuIItemContainer}>
           <View style={styles.iconContainer}>
@@ -63,7 +68,7 @@ const styles = StyleSheet.create({
     width: 400,
     backgroundColor: "#2C2C2B",
     padding: 15,
-    borderRadius: 35
+    borderRadius: 35,
   },
   paymentContainer: {
     flex: 1,
@@ -83,7 +88,7 @@ const styles = StyleSheet.create({
   icons: {
     fontSize: 40,
     padding: 10,
-    color: "#01AE92"
+    color: "#01AE92",
   },
   iconContainer: {
     flexDirection: "column",

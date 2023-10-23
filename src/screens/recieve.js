@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useRef, useState } from "react";
 import {
   View,
   Text,
@@ -6,25 +6,22 @@ import {
   Keyboard,
   Alert,
   ScrollView,
-  Pressable,
-  TouchableWithoutFeedback
+  TouchableWithoutFeedback,
 } from "react-native";
-import { TextInput, Avatar, Button, Modal, Portal, List, MD3Colors } from "react-native-paper";
-import QRCodeStyled from 'react-native-qrcode-styled';
-import * as FileSystem from 'expo-file-system';
-import * as MediaLibrary from 'expo-media-library';
-import * as Sharing from 'expo-sharing';
-import { truncateNumber } from '../utils/util'
-import { tokenList, getImageUrl } from '../constants/constants';
+import { TextInput, Button, Modal, Portal } from "react-native-paper";
+import QRCodeStyled from "react-native-qrcode-styled";
+import * as FileSystem from "expo-file-system";
+import * as MediaLibrary from "expo-media-library";
+import * as Sharing from "expo-sharing";
+import { truncateNumber } from "../utils/util";
+import { tokenList, getImageUrl } from "../constants/constants";
 import { useContractReads, useAccount, erc20ABI } from "wagmi";
 import { formatUnits } from "viem";
-
 
 export default function Recieve({ navigation }) {
   const [permissionResponse, requestPermission] = MediaLibrary.usePermissions();
   const QRRef = useRef(null);
   const [amount, setAmount] = useState("");
-  const [textFontSize, setTextFontSize] = useState(50);
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [visible, setVisible] = React.useState(false);
   const [showQr, setShowQR] = useState(false);
@@ -32,20 +29,17 @@ export default function Recieve({ navigation }) {
   const showModal = () => setVisible(true);
   const hideModal = () => setVisible(false);
 
-  const { address, isConnecting, isConnected, isDisconnected } = useAccount()
+  const { address } = useAccount();
 
   const { data: balances } = useContractReads({
-    contracts: tokenList.map(
-      (token) =>
-      ({
-        address: token.address,
-        abi: erc20ABI,
-        functionName: 'balanceOf',
-        args: [address],
-      })
-    ),
+    contracts: tokenList.map((token) => ({
+      address: token.address,
+      abi: erc20ABI,
+      functionName: "balanceOf",
+      args: [address],
+    })),
     enabled: !!address,
-  })
+  });
 
   const handlePressDownload = async () => {
     try {
@@ -55,11 +49,11 @@ export default function Recieve({ navigation }) {
       }
 
       if (!isPermissionGranted) {
-        throw new Error('Library permission access denied');
+        throw new Error("Library permission access denied");
       }
 
       QRRef.current?.toDataURL(async (base64Code) => {
-        const filename = FileSystem.documentDirectory + 'qr_code.png';
+        const filename = FileSystem.documentDirectory + "qr_code.png";
 
         await FileSystem.writeAsStringAsync(filename, base64Code, {
           encoding: FileSystem.EncodingType.Base64,
@@ -67,141 +61,222 @@ export default function Recieve({ navigation }) {
 
         await MediaLibrary.saveToLibraryAsync(filename);
         if (Sharing.isAvailableAsync()) {
-          Sharing.shareAsync(filename)
+          Sharing.shareAsync(filename);
         } else {
-          Alert.alert('Sharing access not available');
+          Alert.alert("Sharing access not available");
         }
       });
     } catch (error) {
-      console.error('QR sharing failed: ', error);
+      console.error("QR sharing failed: ", error);
     }
   };
 
-  Keyboard.addListener(
-    'keyboardDidShow',
-    () => {
-      setShowQR(false);
-    }
-  );
-  Keyboard.addListener(
-    'keyboardDidHide',
-    () => {
-      // setShowQR(true)
-    }
-  );
+  Keyboard.addListener("keyboardDidShow", () => {
+    setShowQR(false);
+  });
+  Keyboard.addListener("keyboardDidHide", () => {
+    setShowQR(true);
+  });
 
   return (
-    <View style={styles.container}>
-      <Portal>
-        <Modal visible={visible} onDismiss={hideModal} contentContainerStyle={{ backgroundColor: 'white', marginLeft: 20, marginRight: 20, marginBottom: 100, marginTop: 100, padding: 20, justifyContent: 'start', alignItems: 'start', borderRadius: 10 }}>
-          <ScrollView >
-            {tokenList.map((item, index) => {
-              return (
-                <View key={index} >
-                  <TouchableWithoutFeedback onPress={() => {
-                    setSelectedIndex(index);
-                    hideModal()
-                  }} >
-                    <View style={{ paddingTop: 12, paddingBottom: 12, paddingLeft: 5, paddingRight: 5, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <View style={{ flexDirection: 'row', justifyContent: 'center', alignItems: 'center' }}>
-                        {getImageUrl(item)}
-                        <View style={{ flexDirection: 'column', paddingLeft: 10, }}>
-                          <Text style={{ alignSelf: 'center' }}>{item.name}</Text>
-                          <Text style={{ fontSize: 10, alignItems: 'center', textTransform: 'uppercase', }}>{item.symbol}</Text>
-                        </View>
-                      </View>
-                      <Text>{truncateNumber(balances && balances.length > 0 ? formatUnits(balances[index].result, item.decimals) : 13.0345, 2)}</Text>
-                    </View>
-                  </TouchableWithoutFeedback>
-                </View>
-              )
-            })}
-          </ScrollView>
-        </Modal>
-      </Portal>
-      <View style={styles.amountInputContainer}>
-        <TextInput
-          mode="outlined"
-          style={styles.textInput}
-          label="Enter Amount"
-          keyboardType="decimal-pad"
-          placeholder="Type something"
-          onChangeText={(value) => {
-            setAmount(value);
-          }}
-        // right={<TextInput.Affix text="/100" />}
-        />
-      </View>
-      <View style={styles.tokenContainer}>
-        <Button mode="contained-tonal" buttonColor="#01AE92" textColor="#fff" style={{ marginTop: 10, width: '100%' }} onPress={showModal}>
-          <Text>{tokenList[selectedIndex].name}</Text>
-        </Button>
-      </View>
-      <View
-        style={{
-          flex: 1,
-          width: "100%",
-          justifyContent: "center",
-          alignItems: "center",
-          paddingBottom: 150,
-        }}
-      >
-        {showQr ? <><View style={{ borderWidth: 2, borderColor: '#01AE92', borderStyle: 'dashed', justifyContent: 'center', alignItems: 'center' }}>
-          <QRCodeStyled
-            data={JSON.stringify({
-              token: tokenList[selectedIndex],
-              amount: amount,
-              receiver: address
-            })}
-            style={{
-              backgroundColor: 'white',
-              borderRadius: 16,
-              overflow: 'hidden',
+    <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
+      <View style={styles.container}>
+        <Portal>
+          <Modal
+            visible={visible}
+            onDismiss={hideModal}
+            contentContainerStyle={{
+              backgroundColor: "white",
+              marginLeft: 20,
+              marginRight: 20,
+              marginBottom: 100,
+              marginTop: 100,
+              padding: 20,
+              justifyContent: "start",
+              alignItems: "start",
+              borderRadius: 10,
             }}
-            logoBackgroundColor='white'
-            ref={QRRef}
-            pieceCornerType={'rounded'}
-            pieceBorderRadius={[4, 0, 4]}
-            isPiecesGlued
-            padding={2}
-            pieceSize={5}
-            gradient={{
-              type: 'linear',
-              options: {
-                start: [0, 0],
-                end: [1, 1],
-                colors: ['#017592', '#606363'],
-                locations: [0, 1],
-              },
-            }}
-          />
-        </View>
-          <View style={{ marginTop: 100, width: '85%' }}>
-            <Button
-              onPress={handlePressDownload}
-              style={styles.button}
-            >
-              <Text style={styles.buttonText}>Share</Text>
-            </Button>
-          </View></> : <View style={{ marginTop: 100, width: '85%' }}>
-          <Button
-            onPress={() => {
-              console.log(selectedIndex);
-              console.log(amount);
-              if (amount) {
-                setShowQR(true)
-              } else {
-                Alert.alert("Please enter amount")
-              }
-
-            }}
-            style={styles.button}
           >
-            <Text style={styles.buttonText}>Generate QR</Text>
-          </Button>
-        </View>}
+            <ScrollView>
+              {tokenList.map((item, index) => {
+                return (
+                  <View key={index}>
+                    <TouchableWithoutFeedback
+                      onPress={() => {
+                        setSelectedIndex(index);
+                        hideModal();
+                      }}
+                    >
+                      <View
+                        style={{
+                          paddingTop: 12,
+                          paddingBottom: 12,
+                          paddingLeft: 5,
+                          paddingRight: 5,
+                          flexDirection: "row",
+                          justifyContent: "space-between",
+                          alignItems: "center",
+                          width: 340,
+                        }}
+                      >
+                        <View
+                          style={{
+                            flexDirection: "row",
+                            justifyContent: "center",
+                            alignItems: "center",
+                          }}
+                        >
+                          {getImageUrl(item)}
+                          <View
+                            style={{ flexDirection: "column", paddingLeft: 10 }}
+                          >
+                            <Text style={{ alignSelf: "center" }}>
+                              {item.name}
+                            </Text>
+                            <Text
+                              style={{
+                                fontSize: 10,
+                                alignItems: "center",
+                                textTransform: "uppercase",
+                              }}
+                            >
+                              {item.symbol}
+                            </Text>
+                          </View>
+                        </View>
+                        <Text
+                          style={{ fontSize: 16, fontFamily: "Inter-Bold" }}
+                        >
+                          {truncateNumber(
+                            balances && balances.length > 0
+                              ? formatUnits(
+                                  balances[index].result,
+                                  item.decimals
+                                )
+                              : 13.0345,
+                            2
+                          )}
+                        </Text>
+                      </View>
+                    </TouchableWithoutFeedback>
+                  </View>
+                );
+              })}
+            </ScrollView>
+          </Modal>
+        </Portal>
+        <View style={styles.amountInputContainer}>
+          <TextInput
+            mode="flat"
+            style={styles.textInput}
+            label="Enter Amount"
+            keyboardType="numeric"
+            placeholder="Type something"
+            onChangeText={(value) => {
+              setAmount(value);
+            }}
+            // right={<TextInput.Affix text="/100" />}
+          />
+
+          <View
+            onPress={showModal}
+            style={{
+              flexDirection: "row",
+              justifyContent: "center",
+              alignItems: "center",
+              backgroundColor: "#01AE92",
+              width: "40%",
+              borderRadius: 50,
+              padding: 5,
+            }}
+          >
+            <Button onPress={showModal}>
+              <Text style={{ color: "#fff" }}>
+                {tokenList[selectedIndex].name}
+              </Text>
+            </Button>
+          </View>
+        </View>
+
+        <View
+          style={{
+            flex: 1,
+            width: "100%",
+            height: "100%",
+            justifyContent: "center",
+            alignItems: "center",
+            paddingBottom: 20,
+          }}
+        >
+          {showQr ? (
+            <>
+              <View
+                style={{
+                  borderWidth: 4,
+                  borderColor: "#01AE92",
+                  borderStyle: "dashed",
+                  justifyContent: "center",
+                  alignItems: "center",
+                  padding: 10,
+                  borderRadius: 10,
+                }}
+              >
+                <QRCodeStyled
+                  data={JSON.stringify({
+                    token: tokenList[selectedIndex],
+                    amount: amount,
+                    receiver: address,
+                  })}
+                  style={{
+                    backgroundColor: "#01AE92",
+                    borderRadius: 16,
+                    overflow: "hidden",
+                  }}
+                  logoBackgroundColor="#01AE92"
+                  ref={QRRef}
+                  pieceCornerType={"rounded"}
+                  pieceBorderRadius={[4, 0, 4]}
+                  isPiecesGlued
+                  padding={30}
+                  pieceSize={5}
+                  gradient={{
+                    type: "linear",
+                    options: {
+                      start: [0, 0],
+                      end: [1, 1],
+                      colors: ["#FFF", "#FFF"],
+                      locations: [0, 1],
+                    },
+                  }}
+                />
+              </View>
+              <View style={{ marginTop: 0, width: "100%", padding: 20 }}>
+                <Button onPress={handlePressDownload} style={styles.button}>
+                  <Text style={styles.buttonText}>Share</Text>
+                </Button>
+              </View>
+            </>
+          ) : (
+            <View style={{ width: "100%", padding: 20 }}>
+              <Button
+                onPress={() => {
+                  console.log(selectedIndex);
+                  console.log(amount);
+                  if (amount) {
+                    setShowQR(true);
+                  } else {
+                    Alert.alert("Please enter amount");
+                  }
+                }}
+                style={styles.button}
+              >
+                <Text style={styles.buttonText}>Generate QR</Text>
+              </Button>
+            </View>
+          )}
+        </View>
       </View>
-    </View>
+    </TouchableWithoutFeedback>
   );
 }
 
@@ -211,8 +286,8 @@ const styles = StyleSheet.create({
   },
   container: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
     flexDirection: "column",
     backgroundColor: "#fff",
   },
@@ -229,28 +304,27 @@ const styles = StyleSheet.create({
     gap: 25,
   },
   amountInputContainer: {
-    justifyContent: 'center',
+    flexDirection: "row",
+    justifyContent: "center",
     alignItems: "center",
     backgroundColor: "white",
-    width: '90%',
+    width: "100%",
     padding: 10,
+    gap: 10,
   },
-  tokenContainer: {
-    width: '85%',
-    alignItems: "center",
-  },
+
   tokenLabel: {
     fontSize: 18,
-    width: '85%',
+    width: "100%",
     fontWeight: "800",
     color: "white",
     fontFamily: "Inter-Regular",
   },
   textInput: {
-    width: '100%',
     backgroundColor: "#fff",
     borderColor: "#01AE92",
     color: "#000",
+    width: "50%",
     fontFamily: "Inter-Regular",
   },
   listItemContainer: {
@@ -284,16 +358,16 @@ const styles = StyleSheet.create({
     fontSize: 17,
   },
   button: {
-    width: '100%',
-    backgroundColor: '#01AE92',
+    width: "100%",
+    backgroundColor: "#01AE92",
     paddingTop: 5,
-    paddingBottom: 5
+    paddingBottom: 5,
   },
   buttonText: {
-    color: 'white',
-    textAlign: 'center',
-    textTransform: 'uppercase',
-    fontWeight: 'bold',
+    color: "white",
+    textAlign: "center",
+    textTransform: "uppercase",
     borderRadius: 8,
+    fontFamily: "Inter-Bold",
   },
 });

@@ -13,12 +13,12 @@ export default function ContactsComponent() {
   const data = ["VA", "XD", "RD", "VA", "XD", "RD"];
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Friends</Text>
+      {/* <Text style={styles.title}>Friends</Text>
       <View style={styles.paymentContainer}>
         {data.map((item, index) => {
           return <Item key={index} item={item} />;
         })}
-      </View>
+      </View> */}
     </View>
   );
 }
@@ -30,7 +30,7 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 20,
     fontFamily: "Inter-Bold",
-    color: 'grey'
+    color: "grey",
   },
   container: {
     flex: 1,
