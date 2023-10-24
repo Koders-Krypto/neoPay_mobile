@@ -87,7 +87,7 @@ export default function RecentTransactionsComponent() {
                       color={"green"}
                     />
                   ) : (
-                    <Feather name="arrow-down-left" size={30} color={"red"} />
+                    <Feather name="arrow-up-right" size={30} color={"red"} />
                   )}
                   <Text
                     style={
