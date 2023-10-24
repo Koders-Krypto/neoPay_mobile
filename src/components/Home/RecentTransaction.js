@@ -82,7 +82,7 @@ export default function RecentTransactionsComponent() {
           style={value === 1 ? styles.titleActive : styles.title}
           onPress={() => setValue(1)}
         >
-          Pools
+          Liquidity Pools
         </Text>
       </View>
       {value === 0 ? (
@@ -121,7 +121,7 @@ export default function RecentTransactionsComponent() {
         </View>
       ) : (
         <View style={styles.transactionsView}>
-          <Text>Pools</Text>
+          <Text style={{ fontSize: 30 }}>Coming Soon...</Text>
         </View>
       )}
     </View>
@@ -149,12 +149,15 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     padding: 10,
+    backgroundColor: '#ffffff'
   },
   transactionsView: {
     flex: 1,
     width: "100%",
-    gap: 20,
-    paddingTop: 10,
+    justifyContent: 'center',
+    alignItems: "center",
+    minHeight: 300,
+    gap: 8,
   },
   hashContainer: {
     flexDirection: "row",

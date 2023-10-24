@@ -113,7 +113,7 @@ export default function QRScan({ navigation }) {
         address: tokenList[selectedIndex].address,
         abi: erc20ABI,
         functionName: "allowance",
-        args: [address, "0x2eD57D4deB54f96476F3c4d73768D3313267885F"],
+        args: [address, "0x2eD57D4deB54f96476F3c4d73768D3313267885F"], // router
       });
 
       if (allowance < parseUnits(payload.amount, payload.token.decimals)) {
@@ -158,7 +158,7 @@ export default function QRScan({ navigation }) {
         [tokens[0].address]: {
           ...PAIR_ADDRESS_CACHE?.[tokens[0].address],
           [tokens[1].address]: getContractAddress({
-            from: "0x42C0837Ed0ec31838c3AF353268864212758D55F",
+            from: "0x42C0837Ed0ec31838c3AF353268864212758D55F", // fatory
             opcode: "CREATE2",
             salt: keccak256(
               encodePacked(

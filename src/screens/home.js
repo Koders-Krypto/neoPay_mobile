@@ -29,7 +29,7 @@ export default function Home({ navigation }) {
   }, [isDisconnected])
 
   return (
-    <ScrollView style={styles.scrollView}>
+    <ScrollView style={{ backgroundColor: '#ffffff' }}>
       <View style={styles.container}>
         <HeaderComponent navigation={navigation} />
         <BalanceComponent navigation={navigation} />

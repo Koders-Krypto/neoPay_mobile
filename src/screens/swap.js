@@ -9,48 +9,459 @@ import {
   TouchableWithoutFeedback,
 } from "react-native";
 import Constants from "expo-constants";
+import { Modal, Portal } from "react-native-paper";
 import { Ionicons } from "@expo/vector-icons";
-import * as React from "react";
+import React, { useState, useEffect } from "react";
 import { AntDesign } from "@expo/vector-icons";
+import { truncateNumber } from "../utils/util";
+import { tokenList, getImageUrl } from "../constants/constants";
+import { useContractReads, useAccount, erc20ABI, usePublicClient, useWalletClient } from "wagmi";
+import { formatUnits, parseUnits, getContractAddress, keccak256, encodePacked, waitForTransactionReceipt } from "viem";
+import { readContract } from "viem/contract";
+import pairAbi from "../utils/ABI/v2Pair";
+import router02Abi from "../utils/ABI/router";
+if (typeof BigInt == undefined) global.BigInt = require("big-integer");
+
 
 export default function Swap() {
-  const [text, onChangeText] = React.useState("0");
+  const [textA, onChangeTextA] = useState("0");
+  const [textB, onChangeTextB] = useState("0");
+  const [visible, setVisible] = useState(false);
+  const [isSelectedToken, setIsSelectedToken] = useState(0); // 0 is null, 1 is token A, 2 is token B
+  const [selectedIndexA, setSelectedIndexA] = useState(0);
+  const [selectedIndexB, setSelectedIndexB] = useState(null);
+  const [balances, setBalances] = useState([]);
+  const [tradeType, setTradeType] = useState("swapExactTokensForTokens") // 0 for exact in, 1 for exact out
+  const [status, setStatus] = useState(0);
+
+  const { data: walletClient } = useWalletClient();
+
+  const showModal = () => setVisible(true);
+  const hideModal = () => setVisible(false);
+
+  const { address } = useAccount();
+
+  const publicClient = usePublicClient();
+  let PAIR_ADDRESS_CACHE;
+
+
+  const { data } = useContractReads({
+    contracts: tokenList.map((token) => ({
+      address: token.address,
+      abi: erc20ABI,
+      functionName: "balanceOf",
+      args: [address],
+    })),
+    enabled: !!address,
+  });
+
+  useEffect(() => {
+    setBalances(data);
+  }, [balances])
+
+  async function getTransactionStatus(hash) {
+    setStatus(1); // loading
+    const status = await publicClient.waitForTransactionReceipt(hash);
+    if (status.status === "success") {
+      setStatus(2); // success
+    } else {
+      setStatus(3); // failed
+    }
+  }
+
+  async function fetchPairData(tokenA, tokenB) {
+    const address = getPairAddress(tokenA, tokenB);
+    const [reserves0, reserves1] = await new readContract(publicClient, {
+      address,
+      abi: pairAbi.abi,
+      functionName: "getReserves",
+    });
+    const balances =
+      tokenA.address.toLowerCase() < tokenB.address.toLowerCase()
+        ? [reserves0, reserves1]
+        : [reserves1, reserves0];
+    return balances;
+  }
+
+  const getExecutionPriceExactIn = async (
+    tokenA,
+    tokenB,
+    inputAmount,
+    publicClient
+  ) => {
+    const reserves = await fetchPairData(tokenA, tokenB, publicClient)
+    let inputReserve = reserves[0]
+    let outputReserve = reserves[1]
+
+    const outputAmount =
+      (inputAmount * BigInt(997) * outputReserve) /
+      (inputReserve * BigInt(1000) + inputAmount * BigInt(997))
+
+    return (
+      (parseUnits(outputAmount.toString(), tokenA.decimals) *
+        parseUnits('1', tokenB.decimals)) /
+      parseUnits(inputAmount.toString(), tokenB.decimals)
+    )
+  }
+
+  const getExecutionPriceExactOut = async (
+    tokenA,
+    tokenB,
+    outputAmount,
+    publicClient
+  ) => {
+    const reserves = await fetchPairData(tokenA, tokenB, publicClient)
+    let inputReserve = reserves[0]
+    let outputReserve = reserves[1]
+
+    const inputAmount =
+      (inputReserve * outputAmount * BigInt(1000)) /
+      ((outputReserve - outputAmount) * BigInt(997)) +
+      BigInt(1)
+
+    return (
+      (parseUnits(inputAmount.toString(), tokenB.decimals) *
+        parseUnits('1', tokenA.decimals)) /
+      parseUnits(outputAmount.toString(), tokenA.decimals)
+    )
+  }
+
+  const getSwapParamsExactIn = async (
+    tokenA,
+    tokenB,
+    inputAmount,
+    publicClient,
+    options
+  ) => {
+    const to = address
+    const reserves = await fetchPairData(tokenA, tokenB, publicClient)
+
+    let inputReserve = reserves[0]
+    let outputReserve = reserves[1]
+
+    const outputAmount =
+      (inputAmount * BigInt(997) * outputReserve) /
+      ((inputReserve * BigInt(1000)) +
+        inputAmount * BigInt(997))
+    const slippageAdjustedAmountOut =
+      (options.allowedSlippage * outputAmount) / BigInt(100)
+    const path = [tokenA.address, tokenB.address]
+    const deadline = BigInt(Math.floor(new Date().getTime() / 1000) + options.ttl)
+
+    return [inputAmount, slippageAdjustedAmountOut, path, to, deadline]
+  }
+
+  const getSwapParamsExactOut = async (
+    tokenA,
+    tokenB,
+    outputAmount,
+    publicClient,
+    options
+  ) => {
+    const to = address
+    const reserves = await fetchPairData(tokenA, tokenB, publicClient)
+
+    let inputReserve = reserves[0]
+    let outputReserve = reserves[1]
+    const inputAmount =
+      (inputReserve * outputAmount * BigInt(1000)) /
+      ((outputReserve - outputAmount) * BigInt(997))
+    const slippageAdjustedAmountIn =
+      (options.allowedSlippage * inputAmount) / BigInt(100) + BigInt(1)
+    const path = [tokenA.address, tokenB.address]
+    const deadline = BigInt(Math.floor(new Date().getTime() / 1000) + options.ttl)
+
+    return [outputAmount, slippageAdjustedAmountIn, path, to, deadline]
+  }
+
+  function getPairAddress(tokenA, tokenB) {
+    const tokens =
+      tokenA.address.toLowerCase() < tokenB.address.toLowerCase()
+        ? [tokenA, tokenB]
+        : [tokenB, tokenA];
+    if (
+      PAIR_ADDRESS_CACHE?.[tokens[0].address]?.[tokens[1].address] === undefined
+    ) {
+      PAIR_ADDRESS_CACHE = {
+        ...PAIR_ADDRESS_CACHE,
+        [tokens[0].address]: {
+          ...PAIR_ADDRESS_CACHE?.[tokens[0].address],
+          [tokens[1].address]: getContractAddress({
+            from: "0x42C0837Ed0ec31838c3AF353268864212758D55F",
+            opcode: "CREATE2",
+            salt: keccak256(
+              encodePacked(
+                ["address", "address"],
+                [tokens[0].address, tokens[1].address]
+              ),
+              "bytes"
+            ),
+            bytecodeHash:
+              "0xf7d8e8b1786b94ca2b43284f30d02380992e7d5918b09acc21f3cdb3377d4958",
+          }),
+        },
+      };
+    }
+
+    return PAIR_ADDRESS_CACHE[tokens[0].address][tokens[1].address];
+  }
+
+  const handleSwap = async () => {
+    const swapConfig = {
+      allowedSlippage: BigInt(100),
+      recipient: address,
+      ttl: 50,
+    }
+    let swapParams;
+    const inputAmount = parseUnits(textA, tokenList[selectedIndexA].decimals)
+    const outputAmount = parseUnits(textB, tokenList[selectedIndexB].decimals)
+    if (tradeType === "swapExactTokensForTokens") {
+      // exact in
+      swapParams = await getSwapParamsExactIn(
+        tokenList[selectedIndexA],
+        tokenList[selectedIndexB],
+        inputAmount,
+        publicClient,
+        swapConfig
+      )
+    } else if (tradeType === "swapTokensForExactTokens") {
+      // exact out
+      swapParams = await getSwapParamsExactOut(
+        tokenList[selectedIndexA],
+        tokenList[selectedIndexB],
+        outputAmount,
+        publicClient,
+        swapConfig
+      )
+    }
+
+    try {
+      const allowance = await publicClient.readContract({
+        address: tokenList[selectedIndexA].address,
+        abi: erc20ABI,
+        functionName: 'allowance',
+        args: [address, '0x2eD57D4deB54f96476F3c4d73768D3313267885F'],
+      })
+      if (allowance < inputAmount) {
+        const approveTx = await walletClient.writeContract({
+          address: tokenList[selectedIndexA].address,
+          abi: erc20ABI,
+          functionName: 'approve',
+          args: ['0x2eD57D4deB54f96476F3c4d73768D3313267885F', inputAmount],
+        })
+        await waitForTransactionReceipt(publicClient, { hash: approveTx.hash });
+      }
+      console.log(swapParams);
+      const swapTx = await walletClient.writeContract({
+        address: '0x2eD57D4deB54f96476F3c4d73768D3313267885F',
+        abi: router02Abi,
+        functionName: tradeType,
+        args: swapParams,
+      })
+      getTransactionStatus(swapTx)
+    } catch (error) {
+      console.log('swap failed =>', error)
+    }
+
+  }
+
+  const handleTextChangeA = async (value) => {
+    onChangeTextA(value);
+    setTradeType("swapExactTokensForTokens");
+    if (selectedIndexA === null || selectedIndexB === null || value === null) { onChangeTextB("0"); return }
+    const inputAmount = parseUnits(value, tokenList[selectedIndexA].decimals);
+    if (inputAmount <= 0) { onChangeTextB("0"); return }
+    const executionPrice = await getExecutionPriceExactIn(
+      tokenList[selectedIndexA],
+      tokenList[selectedIndexB],
+      inputAmount,
+      publicClient
+    )
+    onChangeTextB(
+      formatUnits(
+        (executionPrice * inputAmount) / parseUnits('1', tokenList[selectedIndexA].decimals),
+        tokenList[selectedIndexB].decimals
+      )
+    )
+  }
+
+  const handleTextChangeB = async (value) => {
+    onChangeTextB(value);
+    setTradeType("swapTokensForExactTokens");
+    if (selectedIndexA === null || selectedIndexB === null || value === null) { onChangeTextA("0"); return }
+    const outputAmount = parseUnits(value, tokenList[selectedIndexB].decimals)
+    if (outputAmount <= 0) { onChangeTextA("0"); return }
+    const executionPrice = await getExecutionPriceExactOut(
+      tokenList[selectedIndexA],
+      tokenList[selectedIndexB],
+      outputAmount,
+      publicClient
+    )
+    onChangeTextA(
+      formatUnits(
+        (executionPrice * outputAmount) / parseUnits('1', tokenList[selectedIndexB].decimals),
+        tokenList[selectedIndexA].decimals
+      )
+    )
+  }
+
   return (
     <View style={styles.wrapper}>
+      <Portal>
+        <Modal
+          visible={visible}
+          onDismiss={hideModal}
+          contentContainerStyle={{
+            backgroundColor: "white",
+            marginLeft: 20,
+            marginRight: 20,
+            marginBottom: 100,
+            marginTop: 100,
+            padding: 20,
+            justifyContent: "start",
+            alignItems: "start",
+            borderRadius: 10,
+          }}
+        >
+          <ScrollView>
+            {tokenList.map((item, index) => {
+              return (
+                <View key={index}>
+                  <TouchableWithoutFeedback
+                    onPress={() => {
+                      if (isSelectedToken === 1) {
+                        setSelectedIndexA(index);
+                      } else if (isSelectedToken === 2) {
+                        setSelectedIndexB(index);
+                      }
+                      hideModal();
+                    }}
+                  >
+                    <View
+                      style={{
+                        paddingTop: 12,
+                        paddingBottom: 12,
+                        paddingLeft: 5,
+                        paddingRight: 5,
+                        flexDirection: "row",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                        width: 340,
+                      }}
+                    >
+                      <View
+                        style={{
+                          flexDirection: "row",
+                          justifyContent: "center",
+                          alignItems: "center",
+                        }}
+                      >
+                        {getImageUrl(item)}
+                        <View
+                          style={{ flexDirection: "column", paddingLeft: 10 }}
+                        >
+                          <Text style={{ alignSelf: "center" }}>
+                            {item.name}
+                          </Text>
+                          <Text
+                            style={{
+                              fontSize: 10,
+                              alignItems: "center",
+                              textTransform: "uppercase",
+                            }}
+                          >
+                            {item.symbol}
+                          </Text>
+                        </View>
+                      </View>
+                      <Text
+                        style={{ fontSize: 16, fontFamily: "Inter-Bold" }}
+                      >
+                        {truncateNumber(
+                          balances && balances.length > 0
+                            ? formatUnits(
+                              balances[index].result,
+                              item.decimals
+                            )
+                            : '',
+                          3
+                        )}
+                      </Text>
+                    </View>
+                  </TouchableWithoutFeedback>
+                </View>
+              );
+            })}
+          </ScrollView>
+        </Modal>
+      </Portal>
       <View style={styles.container}>
         <Text style={styles.title}>You Pay</Text>
         <View style={styles.row}>
           <TextInput
             style={styles.textInput}
-            onChangeText={onChangeText}
-            value={text}
+            keyboardType="numeric"
+            onChangeText={(value) => {
+              handleTextChangeA(value)
+            }}
+            value={textA}
           />
-          <View style={styles.button}>
-            <Text style={styles.buttonText}>Select a Token</Text>
-          </View>
+          <TouchableWithoutFeedback onPress={() => {
+            setIsSelectedToken(1)
+            showModal()
+          }}>
+            <View style={styles.button} >
+              <Text style={styles.buttonText}>{selectedIndexA !== null ? tokenList[selectedIndexA].symbol : "Select Token"}</Text>
+            </View>
+          </TouchableWithoutFeedback>
         </View>
         <View style={styles.row}>
           <Text style={styles.subText}>$1600</Text>
           <View style={styles.row}>
-            <Text style={styles.subText}>Balance: 0.1</Text>
-            <Text style={styles.subTextColor}>Max</Text>
+            <Text style={styles.subText}>Balance: {balances && balances.length > 0 && selectedIndexA !== null ? truncateNumber(formatUnits(balances[selectedIndexA].result, tokenList[selectedIndexA].decimals), 3) : 0.00}</Text>
+            <TouchableWithoutFeedback onPress={() => {
+              if (balances && balances.length > 0 && selectedIndexA !== null) {
+                const _maxBalance = truncateNumber(formatUnits(balances[selectedIndexA].result, tokenList[selectedIndexA].decimals), 3).toString();
+                onChangeTextA(_maxBalance);
+              }
+            }}><Text style={styles.subTextColor}>Max</Text></TouchableWithoutFeedback>
           </View>
         </View>
       </View>
-      <View style={styles.swapIcon}>
-        <Ionicons name="swap-vertical" size={30} color="white" />
-      </View>
+      <TouchableWithoutFeedback onPress={() => {
+        let _textA = textA;
+        let _textB = textB;
+        let indexA = selectedIndexA;
+        let indexB = selectedIndexB;
+        onChangeTextA(_textB);
+        onChangeTextB(_textA);
+        setSelectedIndexA(indexB);
+        setSelectedIndexB(indexA);
+      }}>
+        <View style={styles.swapIcon}>
+          <Ionicons name="swap-vertical" size={30} color="white" />
+        </View>
+      </TouchableWithoutFeedback>
       <View style={styles.container}>
         <Text style={styles.title}>You Recieve</Text>
         <View style={styles.row}>
           <TextInput
             style={styles.textInput}
-            onChangeText={onChangeText}
-            value={text}
+            keyboardType="numeric"
+            onChangeText={(value) => {
+              handleTextChangeB(value)
+            }}
+            value={textB}
           />
-          <View style={styles.button}>
-            <Text style={styles.buttonText}>Select a Token</Text>
-          </View>
+          <TouchableWithoutFeedback onPress={() => {
+            setIsSelectedToken(2)
+            showModal()
+          }}>
+            <View style={styles.button} >
+              <Text style={styles.buttonText}>{selectedIndexB !== null ? tokenList[selectedIndexB].symbol : "Select Token"}</Text>
+            </View>
+          </TouchableWithoutFeedback>
+
         </View>
         <View style={styles.row}>
           <Text style={styles.subTextHidden}>$1600</Text>
@@ -59,10 +470,14 @@ export default function Swap() {
           </View>
         </View>
       </View>
-      <View style={styles.swapButton}>
-        <Text style={styles.swapText}>Swap</Text>
-        <AntDesign name="swap" size={30} color="white" />
-      </View>
+      <TouchableWithoutFeedback onPress={() => {
+        handleSwap();
+      }}>
+        <View style={styles.swapButton}>
+          <Text style={styles.swapText}>Swap</Text>
+          <AntDesign name="swap" size={30} color="white" />
+        </View>
+      </TouchableWithoutFeedback>
     </View>
   );
 }
@@ -106,7 +521,6 @@ const styles = StyleSheet.create({
     fontFamily: "Inter-Regular",
   },
   textInput: {
-    border: 0,
     backgroundColor: "rgba(52, 52, 52, 0)",
     color: "#FFF",
     fontSize: 36,
@@ -116,7 +530,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#01AE92",
     padding: 10,
     fontSize: 20,
-    borderRadius: "50%",
+    borderRadius: 50,
   },
   buttonText: {
     color: "#FFF",

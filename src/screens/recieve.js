@@ -75,7 +75,9 @@ export default function Recieve({ navigation }) {
     setShowQR(false);
   });
   Keyboard.addListener("keyboardDidHide", () => {
-    setShowQR(true);
+    if (amount) {
+      setShowQR(true);
+    }
   });
 
   return (
@@ -150,9 +152,9 @@ export default function Recieve({ navigation }) {
                           {truncateNumber(
                             balances && balances.length > 0
                               ? formatUnits(
-                                  balances[index].result,
-                                  item.decimals
-                                )
+                                balances[index].result,
+                                item.decimals
+                              )
                               : 13.0345,
                             2
                           )}
@@ -175,7 +177,7 @@ export default function Recieve({ navigation }) {
             onChangeText={(value) => {
               setAmount(value);
             }}
-            // right={<TextInput.Affix text="/100" />}
+          // right={<TextInput.Affix text="/100" />}
           />
 
           <View
@@ -260,8 +262,6 @@ export default function Recieve({ navigation }) {
             <View style={{ width: "100%", padding: 20 }}>
               <Button
                 onPress={() => {
-                  console.log(selectedIndex);
-                  console.log(amount);
                   if (amount) {
                     setShowQR(true);
                   } else {
