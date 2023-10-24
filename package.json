@@ -36,10 +36,12 @@
     "react-native-share": "^9.4.1",
     "react-native-svg": "13.9.0",
     "react-native-svg-transformer": "^1.1.0",
+    "react-native-toast-message": "^2.1.7",
     "react-native-vector-icons": "^10.0.0",
     "rn-fetch-blob": "^0.12.0",
     "viem": "^1.16.6",
-    "wagmi": "^1.4.5"
+    "wagmi": "^1.4.5",
+    "expo-linking": "~5.0.2"
   },
   "expo": {
     "install": {

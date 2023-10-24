@@ -38,6 +38,9 @@ import {
 import { readContract } from "viem/contract";
 import pairAbi from "../utils/ABI/v2Pair";
 import router02Abi from "../utils/ABI/router";
+import Toast from 'react-native-toast-message';
+import * as Linking from 'expo-linking';
+
 if (typeof BigInt == undefined) global.BigInt = require("big-integer");
 
 export default function QRScan({ navigation }) {
@@ -46,10 +49,15 @@ export default function QRScan({ navigation }) {
   const [payload, setPayload] = useState(null);
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [visible, setVisible] = React.useState(false);
-  const [status, setStatus] = useState(0); // 0 for nothing, 1 for loading, 2 for success, 3 for failed
+  const [status, setStatus] = useState(1); // 0 for nothing, 1 for loading, 2 for success, 3 for failed
+  const [hash, setHash] = useState("");
 
   const showModal = () => setVisible(true);
   const hideModal = () => setVisible(false);
+
+  const showToast = (data) => {
+    Toast.show(data);
+  }
 
   const publicClient = usePublicClient();
   let PAIR_ADDRESS_CACHE = {};
@@ -69,24 +77,40 @@ export default function QRScan({ navigation }) {
   });
 
   const { writeAsync: transfer } = useContractWrite({
-    address: tokenList.length > 0 ?? tokenList[selectedIndex]?.receiver,
+    address: tokenList.length > 0 && tokenList[selectedIndex].address,
     abi: erc20ABI,
     functionName: "transfer",
     account: address,
   });
 
   async function getTransactionStatus(hash) {
+    setHash(hash);
     setStatus(1); // loading
+    showToast({
+      type: 'info',
+      text1: 'waiting for transaction',
+      autoHide: 'true'
+    })
     const status = await publicClient.waitForTransactionReceipt(hash);
     if (status.status === "success") {
+      showToast({
+        type: 'success',
+        text1: 'Transaction Successfull',
+        autoHide: 'true'
+      })
       setStatus(2); // success
     } else {
+      showToast({
+        type: 'error',
+        text1: 'Transaction Failed',
+        autoHide: 'true'
+      })
       setStatus(3); // failed
     }
   }
 
   const sendTransactions = async () => {
-    if (tokenList[selectedIndex].address === payload.address) {
+    if (tokenList[selectedIndex].address === payload.token.address) {
       // intiate same token transfer
       const transferTx = await transfer({
         args: [
@@ -228,7 +252,6 @@ export default function QRScan({ navigation }) {
   const handleBarCodeScanned = ({ type, data }) => {
     setScanned(true);
     setPayload(JSON.parse(data));
-    console.log(JSON.parse(data));
     setSelectedIndex(
       tokenList.findIndex(
         (element) => element.address === JSON.parse(data).token.address
@@ -367,7 +390,7 @@ export default function QRScan({ navigation }) {
               </Button>
             </View>
           </View>
-          <View style={styles.buttonWrapper}>
+          {status === 0 ? <View style={styles.buttonWrapper}>
             <Button
               buttonColor="green"
               mode="contained"
@@ -378,7 +401,21 @@ export default function QRScan({ navigation }) {
             <Button mode="outlined" onPress={() => navigation.navigate("Home")}>
               <Text style={styles}>Cancel</Text>
             </Button>
-          </View>
+          </View> : <View style={styles.buttonWrapper}>
+            <Button
+              buttonColor="green"
+              mode="contained"
+              onPress={() => Linking.openURL('https://evm.ngd.network/' + hash)}
+            >
+              <Text style={styles}>View on Block Explorer</Text>
+            </Button>
+            <Button
+              mode="outlined"
+              onPress={() => navigation.navigate("Home")}
+            >
+              <Text style={styles}>Go Back</Text>
+            </Button>
+          </View>}
         </View>
       )}
     </View>

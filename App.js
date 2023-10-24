@@ -17,6 +17,7 @@ import Recieve from "./src/screens/recieve";
 import QRScan from "./src/screens/qrScan";
 import Login from "./src/screens/login";
 import Swap from "./src/screens/swap";
+import Toast from 'react-native-toast-message';
 
 const Stack = createNativeStackNavigator();
 
@@ -118,6 +119,7 @@ export default function App() {
         </PaperProvider>
       )}
       <Web3Modal />
+      <Toast position='bottom' />
       <StatusBar style="dark" />
     </WagmiConfig>
   );
