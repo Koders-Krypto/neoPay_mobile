@@ -339,58 +339,46 @@ export default function QRScan({ navigation }) {
         />
       )}
       {scanned && (
-        <View
-          style={{ flex: 1, justifyContent: "center", alignItems: "center" }}
-        >
-          {getImageUrl(payload.token, 150)}
-          <Text style={{ fontSize: 30, padding: 10, marginTop: 10 }}>
-            Requested Address
-          </Text>
-          <Text style={{ fontSize: 30, padding: 10, marginTop: 10 }}>
-            {" "}
-            {shortenHex(payload.receiver, 6)}
-          </Text>
-          <Text style={{ fontSize: 30, padding: 10, marginTop: 10 }}>
-            Requested Token
-          </Text>
-          {/* <View style={{ flex: 1, flex: 'row' }}> */}
-          <Text style={{ fontSize: 30, padding: 10, marginTop: 10 }}>
-            {" "}
-            {payload.token.symbol}
-          </Text>
-          <Text style={{ fontSize: 30, padding: 10, marginTop: 10 }}>
-            {" "}
-            {payload.amount}
-          </Text>
-          {/* </View> */}
-          <Text style={{ fontSize: 30, padding: 10, marginTop: 10 }}>
-            Select Token to pay
-          </Text>
-          <View style={styles.tokenContainer}>
+        <View style={styles.scannedContainer}>
+          <View style={styles.logo}>{getImageUrl(payload.token, 100)}</View>
+          <View style={styles.scannedWrapper}>
+            <Text style={styles.scannedTitle}>Requested Address</Text>
+            <Text style={styles.scannedSubTitle}>
+              {shortenHex(payload.receiver, 8)}
+            </Text>
+          </View>
+          <View style={styles.scannedWrapper}>
+            <Text style={styles.scannedTitle}>Requested Token</Text>
+            <Text style={styles.scannedSubTitle}>
+              {payload.amount} {payload.token.symbol}
+            </Text>
+          </View>
+          <View style={styles.scannedWrapper}>
+            <Text style={styles.scannedTitle}>Select Token to pay</Text>
+            <View style={styles.tokenContainer}>
+              <Button
+                mode="contained-tonal"
+                buttonColor="#01AE92"
+                textColor="#fff"
+                style={{ marginTop: 10, width: "100%" }}
+                onPress={showModal}
+              >
+                <Text>{tokenList[selectedIndex].name}</Text>
+              </Button>
+            </View>
+          </View>
+          <View style={styles.buttonWrapper}>
             <Button
-              mode="contained-tonal"
-              buttonColor="#01AE92"
-              textColor="#fff"
-              style={{ marginTop: 10, width: "100%" }}
-              onPress={showModal}
+              buttonColor="green"
+              mode="contained"
+              onPress={() => sendTransactions()}
             >
-              <Text>{tokenList[selectedIndex].name}</Text>
+              <Text style={styles}>Send</Text>
+            </Button>
+            <Button mode="outlined" onPress={() => navigation.navigate("Home")}>
+              <Text style={styles}>Cancel</Text>
             </Button>
           </View>
-          <Button
-            buttonColor="#01AE92"
-            mode="contained"
-            onPress={() => sendTransactions()}
-          >
-            Send
-          </Button>
-          <Button
-            buttonColor="#01AE92"
-            mode="contained"
-            onPress={() => navigation.navigate("Home")}
-          >
-            Cancel
-          </Button>
         </View>
       )}
     </View>
@@ -398,6 +386,9 @@ export default function QRScan({ navigation }) {
 }
 
 const styles = StyleSheet.create({
+  logo: {
+    paddingBottom: 50,
+  },
   text: {
     fontSize: 20,
     fontFamily: "Inter-Regular",
@@ -408,5 +399,32 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     gap: 10,
+  },
+  scannedContainer: {
+    flexDirection: "column",
+    justifyContent: "center",
+    alignItems: "center",
+    gap: 30,
+  },
+  scannedWrapper: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    gap: 8,
+    width: 350,
+  },
+  scannedTitle: {
+    fontSize: 16,
+    fontFamily: "Inter-SemiBold",
+  },
+  scannedSubTitle: {
+    fontSize: 16,
+  },
+  buttonWrapper: {
+    flexDirection: "row-reverse",
+    justifyContent: "space-between",
+    alignItems: "center",
+    width: 350,
+    marginTop: 100,
   },
 });

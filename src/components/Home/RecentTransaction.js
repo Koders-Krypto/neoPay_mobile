@@ -49,6 +49,24 @@ export default function RecentTransactionsComponent() {
       sentAddress: "0x3ee3ffd237513a3477282eba5f7c0adf271e4afa",
       timeStamp: "Sep 12, 2022",
     },
+    {
+      "in/out": false,
+      amount: 0.001,
+      sentAddress: "0x3ee3ffd237513a3477282eba5f7c0adf271e4afa",
+      timeStamp: "Feb 21, 2023",
+    },
+    {
+      "in/out": true,
+      amount: 5,
+      sentAddress: "0x6D9bD8a83533De4E3b26370F18E28e5e3EC86DBa",
+      timeStamp: "Aug 1, 2023",
+    },
+    {
+      "in/out": true,
+      amount: 1.321,
+      sentAddress: "0x3ee3ffd237513a3477282eba5f7c0adf271e4afa",
+      timeStamp: "Sep 12, 2022",
+    },
   ];
 
   return (
@@ -83,11 +101,11 @@ export default function RecentTransactionsComponent() {
                   {item["in/out"] ? (
                     <Feather
                       name="arrow-down-right"
-                      size={30}
+                      size={20}
                       color={"green"}
                     />
                   ) : (
-                    <Feather name="arrow-up-right" size={30} color={"red"} />
+                    <Feather name="arrow-up-right" size={20} color={"red"} />
                   )}
                   <Text
                     style={
@@ -135,37 +153,36 @@ const styles = StyleSheet.create({
   transactionsView: {
     flex: 1,
     width: "100%",
-    gap: 8,
+    gap: 20,
+    paddingTop: 10,
   },
   hashContainer: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    paddingTop: 10,
-    paddingBottom: 10,
     width: "100%",
     textAlign: "left",
   },
   timeStamp: {
-    fontSize: 18,
+    fontSize: 16,
     fontFamily: "Inter-Regular",
     color: "gray",
 
     textAlign: "left",
   },
   status: {
-    fontSize: 20,
+    fontSize: 18,
     fontFamily: "Inter-SemiBold",
     color: "gray",
   },
 
   amountGreen: {
-    fontSize: 25,
+    fontSize: 20,
     fontFamily: "Inter-Bold",
     color: "green",
   },
   amountRed: {
-    fontSize: 25,
+    fontSize: 20,
     fontFamily: "Inter-Bold",
     color: "red",
   },
