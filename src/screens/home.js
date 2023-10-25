@@ -19,7 +19,6 @@ import { useAccount } from 'wagmi'
 
 
 export default function Home({ navigation }) {
-
   const { address, isConnecting, isDisconnected } = useAccount()
 
   useEffect(() => {
@@ -27,6 +26,8 @@ export default function Home({ navigation }) {
       navigation.navigate("Login")
     }
   }, [isDisconnected])
+
+
 
   return (
     <ScrollView style={{ backgroundColor: '#ffffff' }}>

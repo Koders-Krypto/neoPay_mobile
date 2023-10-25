@@ -1,73 +1,46 @@
 import { View, Text, StyleSheet } from "react-native";
-import { shortenHex } from "../../utils/util";
+import { shortenHex, truncateNumber } from "../../utils/util";
 import * as React from "react";
 import { Feather } from "@expo/vector-icons";
+import { useAccount } from 'wagmi';
+import { formatUnits } from 'viem';
+import moment from 'moment'
+import { TouchableWithoutFeedback } from "react-native";
+import * as Linking from 'expo-linking';
 
-export default function RecentTransactionsComponent() {
+
+export default function RecentTransactionsComponent({ navigation }) {
   const [value, setValue] = React.useState(0);
-  const explorer = "https://evm.ngd.network/tx/";
-  const data = [
-    {
-      "in/out": true,
-      amount: 9.0,
-      sentAddress: "0x6D9bD8a83533De4E3b26370F18E28e5e3EC86DBa",
-      timeStamp: "Oct 23, 2023",
-    },
-    {
-      "in/out": false,
-      amount: 10,
-      sentAddress: "0x3ee3ffd237513a3477282eba5f7c0adf271e4afa",
-      timeStamp: "Sep 23, 2023",
-    },
-    {
-      "in/out": true,
-      amount: 0.3,
-      sentAddress: "0x6D9bD8a83533De4E3b26370F18E28e5e3EC86DBa",
-      timeStamp: "Mar 23, 2023",
-    },
-    {
-      "in/out": false,
-      amount: 5.5,
-      sentAddress: "0x3ee3ffd237513a3477282eba5f7c0adf271e4afa",
-      timeStamp: "Jan 23, 2023",
-    },
-    {
-      "in/out": false,
-      amount: 0.001,
-      sentAddress: "0x3ee3ffd237513a3477282eba5f7c0adf271e4afa",
-      timeStamp: "Feb 21, 2023",
-    },
-    {
-      "in/out": true,
-      amount: 5,
-      sentAddress: "0x6D9bD8a83533De4E3b26370F18E28e5e3EC86DBa",
-      timeStamp: "Aug 1, 2023",
-    },
-    {
-      "in/out": true,
-      amount: 1.321,
-      sentAddress: "0x3ee3ffd237513a3477282eba5f7c0adf271e4afa",
-      timeStamp: "Sep 12, 2022",
-    },
-    {
-      "in/out": false,
-      amount: 0.001,
-      sentAddress: "0x3ee3ffd237513a3477282eba5f7c0adf271e4afa",
-      timeStamp: "Feb 21, 2023",
-    },
-    {
-      "in/out": true,
-      amount: 5,
-      sentAddress: "0x6D9bD8a83533De4E3b26370F18E28e5e3EC86DBa",
-      timeStamp: "Aug 1, 2023",
-    },
-    {
-      "in/out": true,
-      amount: 1.321,
-      sentAddress: "0x3ee3ffd237513a3477282eba5f7c0adf271e4afa",
-      timeStamp: "Sep 12, 2022",
-    },
-  ];
+
+  const { address } = useAccount()
+
+  const [transaction, setTransactions] = React.useState([]);
+
+
+  const url = `https://evm.ngd.network/api?module=account&action=tokentx&address=${address}&offset=10`;
+
+  const getData = async () => {
+    fetch(url).then(response => response.json())
+      .then(json => {
+        if (json.message === "OK") {
+          console.log("called");
+          setTransactions(json.result);
+        }
+      })
+      .catch(error => {
+        console.error(error);
+      });
+  }
+
+  React.useEffect(() => {
+    navigation.addListener('focus', () => {
+      getData();
+    });
+  }, [navigation])
+
+  React.useEffect(() => {
+    getData();
+  }, [])
 
   return (
     <View style={styles.container}>
@@ -87,18 +60,22 @@ export default function RecentTransactionsComponent() {
       </View>
       {value === 0 ? (
         <View style={styles.transactionsView}>
-          {data.map((item, index) => {
+          {transaction.map((item, index) => {
             return (
               <View key={index} style={styles.hashContainer}>
-                <View style={{ flexDirection: "column", gap: 8 }}>
-                  <Text style={styles.status}>
-                    {shortenHex(item.sentAddress, 6, "...")}
-                  </Text>
-                  <Text style={styles.timeStamp}>{item.timeStamp}</Text>
-                </View>
+                <TouchableWithoutFeedback onPress={() => {
+                  Linking.openURL('https://evm.ngd.network/' + item.hash)
+                }}>
+                  <View style={{ flexDirection: "column", justifyContent: 'flex-start', alignItems: 'flex-start', gap: 8 }}>
+                    <Text style={styles.status}>
+                      {shortenHex(item.from, 6, "...")}
+                    </Text>
+                    <Text style={styles.timeStamp}>{moment.unix(item.timeStamp).format('ll')}</Text>
+                  </View>
+                </TouchableWithoutFeedback>
 
                 <View style={styles.pricecontainer}>
-                  {item["in/out"] ? (
+                  {item.to === address ? (
                     <Feather
                       name="arrow-down-right"
                       size={20}
@@ -107,14 +84,16 @@ export default function RecentTransactionsComponent() {
                   ) : (
                     <Feather name="arrow-up-right" size={20} color={"red"} />
                   )}
-                  <Text
-                    style={
-                      item["in/out"] ? styles.amountGreen : styles.amountRed
-                    }
-                  >
-                    ${item.amount}
+                  <Text>
+                    <Text
+                      style={
+                        item.to === address ? styles.amountGreen : styles.amountRed
+                      }
+                    >
+                      {truncateNumber(formatUnits(item.value, item.tokenDecimal), 3)}</Text> <Text style={{ fontSize: 14 }}>{item.tokenSymbol}</Text>
                   </Text>
                 </View>
+
               </View>
             );
           })}
@@ -153,11 +132,12 @@ const styles = StyleSheet.create({
   },
   transactionsView: {
     flex: 1,
-    width: "100%",
+    width: 390,
     justifyContent: 'center',
     alignItems: "center",
     minHeight: 300,
-    gap: 8,
+    marginTop: 20,
+    gap: 20,
   },
   hashContainer: {
     flexDirection: "row",
@@ -177,6 +157,7 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontFamily: "Inter-SemiBold",
     color: "gray",
+    textAlign: 'left'
   },
 
   amountGreen: {

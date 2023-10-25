@@ -98,7 +98,7 @@ export default function QRScan({ navigation }) {
 
   const sendTransactions = async () => {
     if (tokenList[selectedIndex].address === payload.token.address) {
-      // intiate same token transfer
+      // initiate same token transfer
       const transferTx = await transfer({
         args: [
           payload.receiver,
