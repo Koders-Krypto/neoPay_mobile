@@ -10,7 +10,6 @@ import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import { PaperProvider } from "react-native-paper";
 import { useFonts } from "expo-font";
 import { StatusBar } from "expo-status-bar";
-import { polygonMumbai } from "wagmi/chains";
 // SCREENS
 import Home from "./src/screens/home";
 import Recieve from "./src/screens/recieve";
@@ -32,7 +31,7 @@ const metadata = {
   icons: ["https://neopaynetwork.com/neopay-icon.png"],
   redirect: {
     native: "exp://",
-    universal: "YOUR_APP_UNIVERSAL_LINK.com",
+    universal: "exp://",
   },
 };
 
@@ -90,7 +89,7 @@ export default function App() {
       {fontsLoaded && (
         <PaperProvider>
           <NavigationContainer>
-            <Stack.Navigator initialRouteName="Home">
+            <Stack.Navigator initialRouteName="Login">
               <Stack.Screen
                 name="Home"
                 component={Home}

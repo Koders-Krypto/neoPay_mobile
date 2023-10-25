@@ -7,7 +7,6 @@ import {
   TouchableWithoutFeedback,
 } from "react-native";
 import { BarCodeScanner } from "expo-barcode-scanner";
-import { Feather } from "@expo/vector-icons";
 import { getImageUrl, tokenList } from "../constants/constants";
 import { shortenHex, truncateNumber } from "../utils/util";
 import {
@@ -16,8 +15,9 @@ import {
   Button,
   Modal,
   Portal,
+  Dialog,
   List,
-  MD3Colors,
+  ActivityIndicator, MD2Colors
 } from "react-native-paper";
 import {
   useContractReads,
@@ -38,8 +38,10 @@ import {
 import { readContract } from "viem/contract";
 import pairAbi from "../utils/ABI/v2Pair";
 import router02Abi from "../utils/ABI/router";
-import Toast from 'react-native-toast-message';
 import * as Linking from 'expo-linking';
+import { AntDesign, Feather } from '@expo/vector-icons';
+
+
 
 if (typeof BigInt == undefined) global.BigInt = require("big-integer");
 
@@ -48,16 +50,14 @@ export default function QRScan({ navigation }) {
   const [scanned, setScanned] = useState(false);
   const [payload, setPayload] = useState(null);
   const [selectedIndex, setSelectedIndex] = useState(0);
-  const [visible, setVisible] = React.useState(false);
-  const [status, setStatus] = useState(1); // 0 for nothing, 1 for loading, 2 for success, 3 for failed
-  const [hash, setHash] = useState("");
+  const [dailogVisible, setDailogVisible] = useState(false);
+  const [visible, setVisible] = useState(false);
+  const [status, setStatus] = useState(0); // 0 for nothing, 1 for loading, 2 for success, 3 for failed
+  const [hash, setHash] = useState(null);
 
   const showModal = () => setVisible(true);
   const hideModal = () => setVisible(false);
-
-  const showToast = (data) => {
-    Toast.show(data);
-  }
+  const hideDialog = () => setDailogVisible(!dailogVisible);
 
   const publicClient = usePublicClient();
   let PAIR_ADDRESS_CACHE = {};
@@ -84,27 +84,14 @@ export default function QRScan({ navigation }) {
   });
 
   async function getTransactionStatus(hash) {
+    console.log(hash);
     setHash(hash);
     setStatus(1); // loading
-    showToast({
-      type: 'info',
-      text1: 'waiting for transaction',
-      autoHide: 'true'
-    })
+    setDailogVisible(true);
     const status = await publicClient.waitForTransactionReceipt(hash);
     if (status.status === "success") {
-      showToast({
-        type: 'success',
-        text1: 'Transaction Successfull',
-        autoHide: 'true'
-      })
       setStatus(2); // success
     } else {
-      showToast({
-        type: 'error',
-        text1: 'Transaction Failed',
-        autoHide: 'true'
-      })
       setStatus(3); // failed
     }
   }
@@ -120,10 +107,10 @@ export default function QRScan({ navigation }) {
       });
       getTransactionStatus(transferTx);
     } else {
-      // intitate swap and pay
+      // initiate swap and pay
       const swapParams = await getSwapParams(
-        tokenList[selectedIndex], // the tokenm i want to pay with
-        payload.token, // the token which should the user recieves : tokenB
+        tokenList[selectedIndex], // the token i want to pay with
+        payload.token, // the token which should the user receives : tokenB
         parseUnits(payload.amount, payload.token.decimals), // amount of tokenB
         publicClient,
         {
@@ -278,6 +265,54 @@ export default function QRScan({ navigation }) {
   return (
     <View style={styles.container}>
       <Portal>
+        <Dialog visible={dailogVisible} onDismiss={hideDialog}>
+          <Dialog.Content>
+            {hash && status === 1 ?
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingTop: 10, paddingBottom: 10 }}>
+                <Text variant="bodyMedium">Transaction Initiated</Text>
+                <ActivityIndicator animating={true} color={MD2Colors.red800} />
+              </View>
+              : status === 2 ?
+                <View>
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingTop: 10, paddingBottom: 10 }}>
+                    <Text style={{ color: 'green' }} variant="bodyMedium">Transaction Successful</Text>
+                    <AntDesign name="check" size={24} color="green" />
+                  </View>
+                  <View style={{ flexDirection: 'row', justifyContent: 'flex-end', alignItems: 'center', paddingTop: 10, paddingBottom: 10 }}>
+                    <TouchableWithoutFeedback onPress={() => navigation.navigate("Home")}>
+                      <View style={{ borderWidth: 1, backgroundColor: 'green', marginRight: 10, paddingLeft: 10, paddingTop: 5, paddingBottom: 5, paddingRight: 10, borderRadius: 10 }}>
+                        <Text style={{ color: '#fff' }}>Home</Text>
+                      </View>
+                    </TouchableWithoutFeedback>
+                    <TouchableWithoutFeedback onPress={() => Linking.openURL('https://evm.ngd.network/' + hash)}>
+                      <View style={{ borderWidth: 1, borderColor: 'green', marginRight: 10, paddingLeft: 10, paddingTop: 5, paddingBottom: 5, paddingRight: 10, borderRadius: 10 }}>
+                        <Text style={{ color: 'green' }}>View on explorer</Text>
+                      </View>
+                    </TouchableWithoutFeedback>
+                  </View>
+                </View>
+                : status === 3 ? <View>
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingTop: 10, paddingBottom: 10 }}>
+                    <Text style={{ color: 'red' }} variant="bodyMedium">Transaction Failed</Text>
+                    <Feather name="alert-triangle" size={24} color="red" />
+                  </View>
+                  <TouchableWithoutFeedback onPress={() => navigation.navigate("Home")}>
+                    <View style={{ flexDirection: 'row', justifyContent: 'flex-end', alignItems: 'center', paddingTop: 10, paddingBottom: 10 }}>
+                      <View style={{ borderWidth: 1, borderColor: 'green', marginRight: 10, paddingLeft: 10, paddingTop: 5, paddingBottom: 5, paddingRight: 10, borderRadius: 10 }}>
+                        <Text style={{ color: 'green' }}>Home</Text>
+                      </View>
+                    </View>
+                  </TouchableWithoutFeedback>
+                </View>
+                  : <></>}
+            {/* {status === 1 || status === 2 ? <Dialog.Actions>
+              <Text>Home</Text>
+              <Text>View on explorer</Text>
+            </Dialog.Actions> : <></>} */}
+          </Dialog.Content>
+        </Dialog>
+      </Portal>
+      <Portal>
         <Modal
           visible={visible}
           onDismiss={hideModal}
@@ -341,7 +376,7 @@ export default function QRScan({ navigation }) {
                       </View>
                       <Text>
                         {truncateNumber(
-                          balances
+                          balances && balances.length > 0
                             ? formatUnits(balances[index].result, item.decimals)
                             : 13.0345,
                           2
@@ -390,7 +425,7 @@ export default function QRScan({ navigation }) {
               </Button>
             </View>
           </View>
-          {status === 0 ? <View style={styles.buttonWrapper}>
+          <View style={styles.buttonWrapper}>
             <Button
               buttonColor="green"
               mode="contained"
@@ -401,22 +436,9 @@ export default function QRScan({ navigation }) {
             <Button mode="outlined" onPress={() => navigation.navigate("Home")}>
               <Text style={styles}>Cancel</Text>
             </Button>
-          </View> : <View style={styles.buttonWrapper}>
-            <Button
-              buttonColor="green"
-              mode="contained"
-              onPress={() => Linking.openURL('https://evm.ngd.network/' + hash)}
-            >
-              <Text style={styles}>View on Block Explorer</Text>
-            </Button>
-            <Button
-              mode="outlined"
-              onPress={() => navigation.navigate("Home")}
-            >
-              <Text style={styles}>Go Back</Text>
-            </Button>
-          </View>}
+          </View>
         </View>
+
       )}
     </View>
   );

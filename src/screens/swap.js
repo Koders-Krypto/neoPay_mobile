@@ -9,10 +9,10 @@ import {
   TouchableWithoutFeedback,
 } from "react-native";
 import Constants from "expo-constants";
-import { Modal, Portal } from "react-native-paper";
-import { Ionicons } from "@expo/vector-icons";
+import { Modal, Portal, Dialog, ActivityIndicator, MD2Colors } from "react-native-paper";
+import * as Linking from 'expo-linking';
+import { AntDesign, Feather, Ionicons } from '@expo/vector-icons';
 import React, { useState, useEffect } from "react";
-import { AntDesign } from "@expo/vector-icons";
 import { truncateNumber } from "../utils/util";
 import { tokenList, getImageUrl } from "../constants/constants";
 import { useContractReads, useAccount, erc20ABI, usePublicClient, useWalletClient } from "wagmi";
@@ -26,6 +26,7 @@ if (typeof BigInt == undefined) global.BigInt = require("big-integer");
 export default function Swap() {
   const [textA, onChangeTextA] = useState("0");
   const [textB, onChangeTextB] = useState("0");
+  const [dailogVisible, setDailogVisible] = useState(false);
   const [visible, setVisible] = useState(false);
   const [isSelectedToken, setIsSelectedToken] = useState(0); // 0 is null, 1 is token A, 2 is token B
   const [selectedIndexA, setSelectedIndexA] = useState(0);
@@ -33,11 +34,13 @@ export default function Swap() {
   const [balances, setBalances] = useState([]);
   const [tradeType, setTradeType] = useState("swapExactTokensForTokens") // 0 for exact in, 1 for exact out
   const [status, setStatus] = useState(0);
+  const [hash, setHash] = useState(null);
 
   const { data: walletClient } = useWalletClient();
 
   const showModal = () => setVisible(true);
   const hideModal = () => setVisible(false);
+  const hideDialog = () => setDailogVisible(!dailogVisible);
 
   const { address } = useAccount();
 
@@ -60,8 +63,10 @@ export default function Swap() {
   }, [balances])
 
   async function getTransactionStatus(hash) {
+    setHash(hash);
     setStatus(1); // loading
-    const status = await publicClient.waitForTransactionReceipt(hash);
+    setDailogVisible(true);
+    const status = await publicClient.waitForTransactionReceipt({ hash });
     if (status.status === "success") {
       setStatus(2); // success
     } else {
@@ -308,6 +313,50 @@ export default function Swap() {
   return (
     <View style={styles.wrapper}>
       <Portal>
+        <Dialog visible={dailogVisible} onDismiss={hideDialog}>
+          <Dialog.Content>
+            {hash && status === 1 ?
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingTop: 10, paddingBottom: 10 }}>
+                <Text variant="bodyMedium">Transaction Initiated</Text>
+                <ActivityIndicator animating={true} color={MD2Colors.red800} />
+              </View>
+              : status === 2 ?
+                <View>
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingTop: 10, paddingBottom: 10 }}>
+                    <Text style={{ color: 'green' }} variant="bodyMedium">Swapped {tokenList[selectedIndexA].symbol} to {tokenList[selectedIndexB].symbol}</Text>
+                    <AntDesign name="check" size={24} color="green" />
+                  </View>
+                  <View style={{ flexDirection: 'row', justifyContent: 'flex-end', alignItems: 'center', paddingTop: 10, paddingBottom: 10 }}>
+                    <TouchableWithoutFeedback onPress={() => navigation.navigate("Home")}>
+                      <View style={{ borderWidth: 1, backgroundColor: 'green', marginRight: 10, paddingLeft: 10, paddingTop: 5, paddingBottom: 5, paddingRight: 10, borderRadius: 10 }}>
+                        <Text style={{ color: '#fff' }}>Home</Text>
+                      </View>
+                    </TouchableWithoutFeedback>
+                    <TouchableWithoutFeedback onPress={() => Linking.openURL('https://evm.ngd.network/' + hash)}>
+                      <View style={{ borderWidth: 1, borderColor: 'green', marginRight: 10, paddingLeft: 10, paddingTop: 5, paddingBottom: 5, paddingRight: 10, borderRadius: 10 }}>
+                        <Text style={{ color: 'green' }}>View on explorer</Text>
+                      </View>
+                    </TouchableWithoutFeedback>
+                  </View>
+                </View>
+                : status === 3 ? <View>
+                  <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingTop: 10, paddingBottom: 10 }}>
+                    <Text style={{ color: 'red' }} variant="bodyMedium">Failed to swap tokens</Text>
+                    <Feather name="alert-triangle" size={24} color="red" />
+                  </View>
+                  <TouchableWithoutFeedback onPress={() => navigation.navigate("Home")}>
+                    <View style={{ flexDirection: 'row', justifyContent: 'flex-end', alignItems: 'center', paddingTop: 10, paddingBottom: 10 }}>
+                      <View style={{ borderWidth: 1, borderColor: 'green', marginRight: 10, paddingLeft: 10, paddingTop: 5, paddingBottom: 5, paddingRight: 10, borderRadius: 10 }}>
+                        <Text style={{ color: 'green' }}>Home</Text>
+                      </View>
+                    </View>
+                  </TouchableWithoutFeedback>
+                </View>
+                  : <></>}
+          </Dialog.Content>
+        </Dialog>
+      </Portal>
+      <Portal>
         <Modal
           visible={visible}
           onDismiss={hideModal}
@@ -416,7 +465,7 @@ export default function Swap() {
           </TouchableWithoutFeedback>
         </View>
         <View style={styles.row}>
-          <Text style={styles.subText}>$1600</Text>
+          <Text style={styles.subText}></Text>
           <View style={styles.row}>
             <Text style={styles.subText}>Balance: {balances && balances.length > 0 && selectedIndexA !== null ? truncateNumber(formatUnits(balances[selectedIndexA].result, tokenList[selectedIndexA].decimals), 3) : 0.00}</Text>
             <TouchableWithoutFeedback onPress={() => {
@@ -524,6 +573,7 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(52, 52, 52, 0)",
     color: "#FFF",
     fontSize: 36,
+    width: '60%',
     fontFamily: "Inter-Bold",
   },
   button: {
