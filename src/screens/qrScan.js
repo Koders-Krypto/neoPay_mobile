@@ -84,8 +84,8 @@ export default function QRScan({ navigation }) {
   });
 
   async function getTransactionStatus(hash) {
-    console.log(hash);
-    setHash(hash);
+    console.log(hash.hash);
+    setHash(hash.hash);
     setStatus(1); // loading
     setDailogVisible(true);
     const status = await publicClient.waitForTransactionReceipt(hash);
