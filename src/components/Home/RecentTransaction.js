@@ -64,7 +64,7 @@ export default function RecentTransactionsComponent({ navigation }) {
             return (
               <View key={index} style={styles.hashContainer}>
                 <TouchableWithoutFeedback onPress={() => {
-                  Linking.openURL('https://evm.ngd.network/' + item.hash)
+                  Linking.openURL('https://evm.ngd.network/tx/' + item.hash)
                 }}>
                   <View style={{ flexDirection: "column", justifyContent: 'flex-start', alignItems: 'flex-start', gap: 8 }}>
                     <Text style={styles.status}>
@@ -75,7 +75,7 @@ export default function RecentTransactionsComponent({ navigation }) {
                 </TouchableWithoutFeedback>
 
                 <View style={styles.pricecontainer}>
-                  {item.to === address ? (
+                  {item.to !== address ? (
                     <Feather
                       name="arrow-down-right"
                       size={20}
@@ -87,7 +87,7 @@ export default function RecentTransactionsComponent({ navigation }) {
                   <Text>
                     <Text
                       style={
-                        item.to === address ? styles.amountGreen : styles.amountRed
+                        item.to !== address ? styles.amountGreen : styles.amountRed
                       }
                     >
                       {truncateNumber(formatUnits(item.value, item.tokenDecimal), 3)}</Text> <Text style={{ fontSize: 14 }}>{item.tokenSymbol}</Text>

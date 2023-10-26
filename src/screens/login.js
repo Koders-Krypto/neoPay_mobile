@@ -45,9 +45,9 @@ export default function Login({ navigation }) {
     <SafeAreaView style={{ flex: 1, marginTop: Constants.statusBarHeight }}>
       <View style={styles.container}>
         <Text style={styles.title}>{"WELCOME TO \nNEOPAY"}</Text>
-        <Text style={{ color: "grey", fontSize: 20 }}>
+        {/* <Text style={{ color: "grey", fontSize: 20 }}>
           Connect your wallet to proceed
-        </Text>
+        </Text> */}
         <Logo width={"100%"} height={"70%"} />
         <View style={styles.buttonContainer}>
           {isDisconnected ? (

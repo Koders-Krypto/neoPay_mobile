@@ -84,12 +84,11 @@ export default function QRScan({ navigation }) {
   });
 
   async function getTransactionStatus(hash) {
-    console.log(hash.hash);
     setHash(hash.hash);
     setStatus(1); // loading
     setDailogVisible(true);
-    const status = await publicClient.waitForTransactionReceipt(hash);
-    if (status.status === "success") {
+    const _status = await publicClient.waitForTransactionReceipt(hash);
+    if (_status.status === "success") {
       setStatus(2); // success
     } else {
       setStatus(3); // failed
@@ -284,7 +283,7 @@ export default function QRScan({ navigation }) {
                         <Text style={{ color: '#fff' }}>Home</Text>
                       </View>
                     </TouchableWithoutFeedback>
-                    <TouchableWithoutFeedback onPress={() => Linking.openURL('https://evm.ngd.network/' + hash)}>
+                    <TouchableWithoutFeedback onPress={() => Linking.openURL('https://evm.ngd.network/tx/' + hash)}>
                       <View style={{ borderWidth: 1, borderColor: 'green', marginRight: 10, paddingLeft: 10, paddingTop: 5, paddingBottom: 5, paddingRight: 10, borderRadius: 10 }}>
                         <Text style={{ color: 'green' }}>View on explorer</Text>
                       </View>
