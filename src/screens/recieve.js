@@ -43,7 +43,7 @@ export default function Recieve({ navigation }) {
   });
 
   useEffect(() => {
-    if (data.length > 0 && data[0].error === undefined) {
+    if (data && data.length > 0 && data[0].error === undefined) {
       setBalances(data);
     }
   }, [data])

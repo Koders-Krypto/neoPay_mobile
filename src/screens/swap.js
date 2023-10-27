@@ -59,7 +59,9 @@ export default function Swap() {
   });
 
   useEffect(() => {
-    setBalances(data);
+    if (data && data.length > 0 && data[0].error === undefined) {
+      setBalances(data);
+    }
   }, [balances])
 
   async function getTransactionStatus(hash) {
