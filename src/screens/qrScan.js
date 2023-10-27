@@ -71,7 +71,7 @@ export default function QRScan({ navigation }) {
   });
 
   const { writeAsync: swapAndTransfer } = useContractWrite({
-    address: "0x2eD57D4deB54f96476F3c4d73768D3313267885F",
+    address: "0x3825b03e10C918E91455560a224249B07E8ed526",
     abi: router02Abi,
     functionName: "swapTokensForExactTokens",
     account: address,
@@ -125,12 +125,12 @@ export default function QRScan({ navigation }) {
         address: tokenList[selectedIndex].address,
         abi: erc20ABI,
         functionName: "allowance",
-        args: [address, "0x2eD57D4deB54f96476F3c4d73768D3313267885F"], // router
+        args: [address, "0x3825b03e10C918E91455560a224249B07E8ed526"], // router
       });
 
       if (allowance < parseUnits(payload.amount, payload.token.decimals)) {
         const approveTx = await approve({
-          args: ["0x2eD57D4deB54f96476F3c4d73768D3313267885F", payload.amount],
+          args: ["0x3825b03e10C918E91455560a224249B07E8ed526", payload.amount],
         });
         await waitForTransactionReceipt(publicClient, { hash: approveTx.hash });
       }
@@ -170,7 +170,7 @@ export default function QRScan({ navigation }) {
         [tokens[0].address]: {
           ...PAIR_ADDRESS_CACHE?.[tokens[0].address],
           [tokens[1].address]: getContractAddress({
-            from: "0x42C0837Ed0ec31838c3AF353268864212758D55F", // fatory
+            from: "0x90763757e106F110e0F657A91d831Ed48EEdBD8B", // fatory
             opcode: "CREATE2",
             salt: keccak256(
               encodePacked(

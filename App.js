@@ -54,7 +54,7 @@ const neo = {
   },
   contracts: {
     multicall3: {
-      address: "0x76C2Bdd0456c73151f20e3D7C937ba53BD1288b5",
+      address: "0x53a942df46b7253c5aBDE42F39ffaDE279B2d32B",
       blockCreated: 992350,
     },
   },
