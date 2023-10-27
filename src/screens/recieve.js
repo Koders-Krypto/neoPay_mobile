@@ -1,4 +1,4 @@
-import React, { useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   View,
   Text,
@@ -25,13 +25,14 @@ export default function Recieve({ navigation }) {
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [visible, setVisible] = React.useState(false);
   const [showQr, setShowQR] = useState(false);
+  const [balances, setBalances] = useState([]);
 
   const showModal = () => setVisible(true);
   const hideModal = () => setVisible(false);
 
   const { address } = useAccount();
 
-  const { data: balances } = useContractReads({
+  const { data } = useContractReads({
     contracts: tokenList.map((token) => ({
       address: token.address,
       abi: erc20ABI,
@@ -40,6 +41,19 @@ export default function Recieve({ navigation }) {
     })),
     enabled: !!address,
   });
+
+  useEffect(() => {
+    if (data.length > 0 && data[0].error === undefined) {
+      setBalances(data);
+    }
+  }, [data])
+
+
+  useEffect(() => {
+    if (balances && balances.length > 0) {
+      console.log(balances);
+    }
+  }, [balances])
 
   const handlePressDownload = async () => {
     try {
@@ -149,15 +163,7 @@ export default function Recieve({ navigation }) {
                         <Text
                           style={{ fontSize: 16, fontFamily: "Inter-Bold" }}
                         >
-                          {truncateNumber(
-                            balances && balances.length > 0
-                              ? formatUnits(
-                                balances[index].result,
-                                item.decimals
-                              )
-                              : 13.0345,
-                            2
-                          )}
+                          {balances && balances.length > 0 ? truncateNumber(formatUnits(balances[index].result, item.decimals), 2) : 0.00}
                         </Text>
                       </View>
                     </TouchableWithoutFeedback>
@@ -230,11 +236,10 @@ export default function Recieve({ navigation }) {
                     receiver: address,
                   })}
                   style={{
-                    backgroundColor: "#01AE92",
+                    backgroundColor: "#fff",
                     borderRadius: 16,
                     overflow: "hidden",
                   }}
-                  logoBackgroundColor="#01AE92"
                   ref={QRRef}
                   pieceCornerType={"rounded"}
                   pieceBorderRadius={[4, 0, 4]}
@@ -246,7 +251,7 @@ export default function Recieve({ navigation }) {
                     options: {
                       start: [0, 0],
                       end: [1, 1],
-                      colors: ["#FFF", "#FFF"],
+                      colors: ["#01AE92", "#01AE92"],
                       locations: [0, 1],
                     },
                   }}

@@ -54,6 +54,7 @@ export default function QRScan({ navigation }) {
   const [visible, setVisible] = useState(false);
   const [status, setStatus] = useState(0); // 0 for nothing, 1 for loading, 2 for success, 3 for failed
   const [hash, setHash] = useState(null);
+  const [balances, setBalances] = useState([]);
 
   const showModal = () => setVisible(true);
   const hideModal = () => setVisible(false);
@@ -83,11 +84,12 @@ export default function QRScan({ navigation }) {
     account: address,
   });
 
-  async function getTransactionStatus(hash) {
-    setHash(hash.hash);
+  async function getTransactionStatus(objHash) {
+    const _hash = objHash.hash;
+    setHash(_hash);
     setStatus(1); // loading
     setDailogVisible(true);
-    const _status = await publicClient.waitForTransactionReceipt(hash);
+    const _status = await publicClient.waitForTransactionReceipt(objHash);
     if (_status.status === "success") {
       setStatus(2); // success
     } else {
@@ -147,11 +149,11 @@ export default function QRScan({ navigation }) {
       abi: pairAbi.abi,
       functionName: "getReserves",
     });
-    const balances =
+    const _balances =
       tokenA.address.toLowerCase() < tokenB.address.toLowerCase()
         ? [reserves0, reserves1]
         : [reserves1, reserves0];
-    return balances;
+    return _balances;
   }
 
   function getPairAddress(tokenA, tokenB) {
@@ -225,7 +227,7 @@ export default function QRScan({ navigation }) {
 
   const { address, isConnecting, isConnected, isDisconnected } = useAccount();
 
-  const { data: balances } = useContractReads({
+  const { data } = useContractReads({
     contracts: tokenList.map((token) => ({
       address: token.address,
       abi: erc20ABI,
@@ -234,6 +236,24 @@ export default function QRScan({ navigation }) {
     })),
     enabled: !!address,
   });
+
+  useState(() => {
+    if (data.length > 0 && data[0].error === undefined) {
+      setBalances(data);
+    }
+  }, [data])
+
+  useState(() => {
+    for (let i = 0; i < tokenList.length; i++) {
+      if (balances && balances.length > 0) {
+        console.log(balances);
+        console.log(tokenList[i].decimals);
+        formatUnits(balances[i].result, tokenList[i].decimals)
+      }
+
+    }
+    console.log(balances);
+  }, [balances])
 
   const handleBarCodeScanned = ({ type, data }) => {
     setScanned(true);
@@ -374,12 +394,11 @@ export default function QRScan({ navigation }) {
                         </View>
                       </View>
                       <Text>
-                        {truncateNumber(
-                          balances && balances.length > 0
-                            ? formatUnits(balances[index].result, item.decimals)
-                            : 13.0345,
-                          2
-                        )}
+                        {
+                          balances && balances.length > 0 ? truncateNumber(
+                            formatUnits(balances[index].result, item.decimals),
+                            2
+                          ) : 13.0345}
                       </Text>
                     </View>
                   </TouchableWithoutFeedback>

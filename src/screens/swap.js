@@ -373,7 +373,7 @@ export default function Swap() {
           }}
         >
           <ScrollView>
-            {tokenList.map((item, index) => {
+            {balances.length > 0 && tokenList.map((item, index) => {
               return (
                 <View key={index}>
                   <TouchableWithoutFeedback
