@@ -31,7 +31,6 @@ export default function Swap() {
   const [isSelectedToken, setIsSelectedToken] = useState(0); // 0 is null, 1 is token A, 2 is token B
   const [selectedIndexA, setSelectedIndexA] = useState(0);
   const [selectedIndexB, setSelectedIndexB] = useState(null);
-  const [balances, setBalances] = useState([]);
   const [tradeType, setTradeType] = useState("swapExactTokensForTokens") // 0 for exact in, 1 for exact out
   const [status, setStatus] = useState(0);
   const [hash, setHash] = useState(null);
@@ -48,7 +47,7 @@ export default function Swap() {
   let PAIR_ADDRESS_CACHE;
 
 
-  const { data } = useContractReads({
+  const { data: balances } = useContractReads({
     contracts: tokenList.map((token) => ({
       address: token.address,
       abi: erc20ABI,
@@ -57,12 +56,6 @@ export default function Swap() {
     })),
     enabled: !!address,
   });
-
-  useEffect(() => {
-    if (data && data.length > 0 && data[0].error === undefined) {
-      setBalances(data);
-    }
-  }, [balances])
 
   async function getTransactionStatus(hash) {
     setHash(hash);
@@ -83,11 +76,11 @@ export default function Swap() {
       abi: pairAbi.abi,
       functionName: "getReserves",
     });
-    const balances =
+    const _balances =
       tokenA.address.toLowerCase() < tokenB.address.toLowerCase()
         ? [reserves0, reserves1]
         : [reserves1, reserves0];
-    return balances;
+    return _balances;
   }
 
   const getExecutionPriceExactIn = async (
@@ -375,7 +368,7 @@ export default function Swap() {
           }}
         >
           <ScrollView>
-            {balances.length > 0 && tokenList.map((item, index) => {
+            {tokenList.map((item, index) => {
               return (
                 <View key={index}>
                   <TouchableWithoutFeedback

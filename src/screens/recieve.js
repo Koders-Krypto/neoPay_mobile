@@ -25,14 +25,13 @@ export default function Recieve({ navigation }) {
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [visible, setVisible] = React.useState(false);
   const [showQr, setShowQR] = useState(false);
-  const [balances, setBalances] = useState([]);
 
   const showModal = () => setVisible(true);
   const hideModal = () => setVisible(false);
 
   const { address } = useAccount();
 
-  const { data } = useContractReads({
+  const { data: balances } = useContractReads({
     contracts: tokenList.map((token) => ({
       address: token.address,
       abi: erc20ABI,
@@ -41,19 +40,6 @@ export default function Recieve({ navigation }) {
     })),
     enabled: !!address,
   });
-
-  useEffect(() => {
-    if (data && data.length > 0 && data[0].error === undefined) {
-      setBalances(data);
-    }
-  }, [data])
-
-
-  useEffect(() => {
-    if (balances && balances.length > 0) {
-      console.log(balances);
-    }
-  }, [balances])
 
   const handlePressDownload = async () => {
     try {
